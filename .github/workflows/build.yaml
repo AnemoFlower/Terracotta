@@ -218,6 +218,7 @@ jobs:
         with:
           name: ${{ env.ARTIFACT }}
           path: ${{ env.ARTIFACT }}
+          archive: false
   build-macos:
     strategy:
       fail-fast: false
@@ -290,12 +291,14 @@ jobs:
         with:
           name: ${{ env.TAR_ARTIFACT }}
           path: ${{ env.TAR_ARTIFACT }}
+          archive: false
       
       - name: Upload PKG Artifact
         uses: actions/upload-artifact@v7
         with:
           name: ${{ env.PKG_ARTIFACT }}
           path: ${{ env.PKG_ARTIFACT }}
+          archive: false
       
   assemble-packages:
     runs-on: ubuntu-latest
