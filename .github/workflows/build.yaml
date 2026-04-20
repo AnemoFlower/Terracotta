@@ -41,6 +41,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+      
       - name: Compute Version
         run: |
           if [ -z "${{ github.event.inputs.version }}" ]; then
@@ -48,6 +49,7 @@ jobs:
           else
             echo "TERRACOTTA_VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
           fi
+      
       - name: Build
         run: |
           rustup target add --toolchain nightly "${{ matrix.target }}"
@@ -57,11 +59,21 @@ jobs:
             -Z build-std-features=default,optimize_for_size
         env:
           RUSTFLAGS: -Zunstable-options -Cpanic=immediate-abort
-      - name: Upload artifact
+      
+      - name: Prepare Artifact
+        run: |
+          source="terracotta-${TERRACOTTA_VERSION}-${{ matrix.os }}-${{ matrix.arch }}.exe"
+          cp "target/${{ matrix.target }}/release/terracotta.exe" "$source"
+          7z a "$source.zip" "$source"
+          echo "ARTIFACT=$source" >> "$GITHUB_ENV"
+
+      - name: Upload Artifact
         uses: actions/upload-artifact@v7
         with:
-          name: terracotta-${TERRACOTTA_VERSION}-${{ matrix.os }}-${{ matrix.arch }}.exe
-          path: target/${{ matrix.target }}/release/terracotta.exe
+          name: ${{ env.ARTIFACT }}
+          path: ${{ env.ARTIFACT }}.zip
+          archive: false
+      
   build-unix:
     strategy:
       fail-fast: false
@@ -116,11 +128,11 @@ jobs:
           ZIG_VERSION="0.14.0"
 
           case "${{ runner.arch }}" in
-            riscv64)
-              ZIG_KEY="riscv64-linux"
+            X64)
+              ZIG_KEY="linux-x86_64"
               ;;
-            loongarch64)
-              ZIG_KEY="loongarch64-linux"
+            ARM64)
+              ZIG_KEY="linux-aarch64"
               ;;
             *)
               echo "Unsupported runner.arch: ${{ runner.arch }}"
@@ -250,7 +262,7 @@ jobs:
           cp "target/${{ matrix.target }}/release/terracotta" "$source"
           chmod 755 "$source"
           tar -cf "$source.tar" "$source"
-          zip -q - "$source.tar" | gh-actions-artifact-client.js upload -r 90 "$source.tar"
+          echo "TAR_ARTIFACT=$source.tar" >> "$GITHUB_ENV"
           
           chmod -R 755 build/macos/scripts
           TEMP_DIR=$(mktemp -d)
@@ -271,13 +283,19 @@ jobs:
             --scripts build/macos/scripts \
             --component-plist build/macos/terracotta.plist \
             "$PKG_OUTPUT"
-          echo "ARTIFACT=$PKG_OUTPUT" >> "$GITHUB_ENV"
+          echo "PKG_ARTIFACT=$PKG_OUTPUT" >> "$GITHUB_ENV"
       
-      - name: Upload artifact
+      - name: Upload TAR Artifact
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ env.ARTIFACT }}
-          path: ${{ env.ARTIFACT }}
+          name: ${{ env.TAR_ARTIFACT }}
+          path: ${{ env.TAR_ARTIFACT }}
+      
+      - name: Upload PKG Artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.PKG_ARTIFACT }}
+          path: ${{ env.PKG_ARTIFACT }}
       
   assemble-packages:
     runs-on: ubuntu-latest
