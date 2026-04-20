@@ -64,15 +64,13 @@ jobs:
         run: |
           source="terracotta-${TERRACOTTA_VERSION}-${{ matrix.os }}-${{ matrix.arch }}.exe"
           cp "target/${{ matrix.target }}/release/terracotta.exe" "$source"
-          7z a "$source.zip" "$source"
           echo "ARTIFACT=$source" >> "$GITHUB_ENV"
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v7
         with:
           name: ${{ env.ARTIFACT }}
-          path: ${{ env.ARTIFACT }}.zip
-          archive: false
+          path: ${{ env.ARTIFACT }}
       
   build-unix:
     strategy:
@@ -145,6 +143,8 @@ jobs:
           curl -fsSL "$ZIG_URL" -o zig.tar.xz
           tar -xf zig.tar.xz
           echo "$PWD/zig-${ZIG_KEY}-${ZIG_VERSION}" >> "$GITHUB_PATH"
+          export PATH="$PWD/zig-${ZIG_KEY}-${ZIG_VERSION}:$PATH"
+          which zig
           zig version
       
       - name: Install cargo-zigbuild (linux riscv64 | linux loongarch64)
