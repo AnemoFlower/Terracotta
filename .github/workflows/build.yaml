@@ -210,8 +210,8 @@ jobs:
           fi
           
           chmod 755 "$source"
-          tar -cf "$source.tar" "$source"
-          echo "ARTIFACT=$source.tar" >> "$GITHUB_ENV"
+          tar -czf "$source.tar.gz" "$source"
+          echo "ARTIFACT=$source.tar.gz" >> "$GITHUB_ENV"
       
       - name: Upload Artifact
         uses: actions/upload-artifact@v7
@@ -262,8 +262,8 @@ jobs:
           
           cp "target/${{ matrix.target }}/release/terracotta" "$source"
           chmod 755 "$source"
-          tar -cf "$source.tar" "$source"
-          echo "TAR_ARTIFACT=$source.tar" >> "$GITHUB_ENV"
+          tar -czf "$source.tar.gz" "$source"
+          echo "TAR_ARTIFACT=$source.tar.gz" >> "$GITHUB_ENV"
           
           chmod -R 755 build/macos/scripts
           TEMP_DIR=$(mktemp -d)
@@ -329,8 +329,8 @@ jobs:
             if [ -n "$file" ]; then
               name="$(basename "$dir")"
 
-              if [[ "$name" == *.tar ]]; then
-                tar -xOf "$file" > "${name%.tar}"
+              if [[ "$name" == *.tar.gz ]]; then
+                tar -xzOf "$file" > "${name%.tar.gz}"
               else
                 mv "$file" "$name"
               fi
