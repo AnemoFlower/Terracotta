@@ -320,64 +320,56 @@ jobs:
 
       - name: Assemble Artifacts
         run: |
-          find artifacts
-          # artifacts_direct=(
-          #   "terracotta-${TERRACOTTA_VERSION}-windows-x86_64.exe"
-          #   "terracotta-${TERRACOTTA_VERSION}-windows-arm64.exe"
-          #   "terracotta-${TERRACOTTA_VERSION}-macos-x86_64.pkg"
-          #   "terracotta-${TERRACOTTA_VERSION}-macos-arm64.pkg"
-          # )
-          # artifacts_tar=(
-          #   "terracotta-${TERRACOTTA_VERSION}-linux-x86_64"
-          #   "terracotta-${TERRACOTTA_VERSION}-linux-arm64"
-          #   "terracotta-${TERRACOTTA_VERSION}-linux-riscv64"
-          #   "terracotta-${TERRACOTTA_VERSION}-linux-loongarch64"
-          #   "terracotta-${TERRACOTTA_VERSION}-freebsd-x86_64"
-          #   "terracotta-${TERRACOTTA_VERSION}-macos-x86_64"
-          #   "terracotta-${TERRACOTTA_VERSION}-macos-arm64"
-          #   "terracotta-${TERRACOTTA_VERSION}-android-armv7.so"
-          #   "terracotta-${TERRACOTTA_VERSION}-android-arm64v8a.so"
-          #   "terracotta-${TERRACOTTA_VERSION}-android-x86.so"
-          #   "terracotta-${TERRACOTTA_VERSION}-android-x86_64.so"
-          # )
+          shopt -s nullglob
+          for dir in artifacts/*/; do
+            file="$(find "$dir" -maxdepth 1 -type f | head -n 1)"
+            if [ -n "$file" ]; then
+              name="$(basename "$dir")"
+
+              if [[ "$name" == *.tar ]]; then
+                tar -xOf "$file" > "${name%.tar}"
+              else
+                mv "$file" "$name"
+              fi
+            fi
+          done
+          rm -r artifacts
           
-          # file=$(mktemp -t XXXXXX.zip)
-          # for artifact in "${artifacts_direct[@]}"; do
-          #   gh-actions-artifact-client.js download "$artifact" > "$file"
-          #   unzip -p "$file" > "$artifact"
-          # done
-          # for artifact in "${artifacts_tar[@]}"; do
-          #   gh-actions-artifact-client.js download "$artifact.tar" > "$file"
-          #   unzip -p "$file" | tar -xOf - > "$artifact"
-          # done
-          # rm "$file"
+          chmod 755 ./terracotta-${TERRACOTTA_VERSION}-*
+
+          7z -m0=LZMA2 -mx=9 -ms=on a terracotta-${TERRACOTTA_VERSION}-all.7z terracotta-${TERRACOTTA_VERSION}-*
+          echo "ARTIFACT=terracotta-${TERRACOTTA_VERSION}-all.7z" >> $GITHUB_ENV
           
-          # chmod 755 terracotta-${TERRACOTTA_VERSION}-*
-          # 7z -m0=LZMA2 -mx=9 -ms=on a terracotta.7z terracotta-${TERRACOTTA_VERSION}-*
-          # zip -r - terracotta.7z | gh-actions-artifact-client.js upload -r 90 "terracotta-${TERRACOTTA_VERSION}-all.7z"
+          if [ ! -z "${{ github.event.inputs.version }}" ]; then
+            mkdir -p bundle
           
-          # if [ ! -z "${{ github.event.inputs.version }}" ]; then
-          #   mkdir -p bundle
+            curl -L -o VCRUNTIME140.DLL "https://github.com/burningtnt/Terracotta/raw/refs/heads/binaries/windows_x86_64/vcruntime140.dll"
+            tar -czvf bundle/terracotta-${TERRACOTTA_VERSION}-windows-x86_64-pkg.tar.gz terracotta-${TERRACOTTA_VERSION}-windows-x86_64.exe VCRUNTIME140.DLL
+            curl -L -o VCRUNTIME140.DLL "https://github.com/burningtnt/Terracotta/raw/refs/heads/binaries/windows_arm64/vcruntime140.dll"
+            tar -czvf bundle/terracotta-${TERRACOTTA_VERSION}-windows-arm64-pkg.tar.gz terracotta-${TERRACOTTA_VERSION}-windows-arm64.exe VCRUNTIME140.DLL
+            tar -czvf bundle/terracotta-${TERRACOTTA_VERSION}-linux-x86_64-pkg.tar.gz terracotta-${TERRACOTTA_VERSION}-linux-x86_64
+            tar -czvf bundle/terracotta-${TERRACOTTA_VERSION}-linux-arm64-pkg.tar.gz terracotta-${TERRACOTTA_VERSION}-linux-arm64
+            tar -czvf bundle/terracotta-${TERRACOTTA_VERSION}-linux-riscv64-pkg.tar.gz terracotta-${TERRACOTTA_VERSION}-linux-riscv64
+            tar -czvf bundle/terracotta-${TERRACOTTA_VERSION}-linux-loongarch64-pkg.tar.gz terracotta-${TERRACOTTA_VERSION}-linux-loongarch64
+            tar -czvf bundle/terracotta-${TERRACOTTA_VERSION}-freebsd-x86_64-pkg.tar.gz terracotta-${TERRACOTTA_VERSION}-freebsd-x86_64
           
-          #   curl -L -o VCRUNTIME140.DLL "https://github.com/burningtnt/Terracotta/raw/refs/heads/binaries/windows_x86_64/vcruntime140.dll"
-          #   tar -czvf bundle/terracotta-${TERRACOTTA_VERSION}-windows-x86_64-pkg.tar.gz terracotta-${TERRACOTTA_VERSION}-windows-x86_64.exe VCRUNTIME140.DLL
-          #   curl -L -o VCRUNTIME140.DLL "https://github.com/burningtnt/Terracotta/raw/refs/heads/binaries/windows_arm64/vcruntime140.dll"
-          #   tar -czvf bundle/terracotta-${TERRACOTTA_VERSION}-windows-arm64-pkg.tar.gz terracotta-${TERRACOTTA_VERSION}-windows-arm64.exe VCRUNTIME140.DLL
-          #   tar -czvf bundle/terracotta-${TERRACOTTA_VERSION}-linux-x86_64-pkg.tar.gz terracotta-${TERRACOTTA_VERSION}-linux-x86_64
-          #   tar -czvf bundle/terracotta-${TERRACOTTA_VERSION}-linux-arm64-pkg.tar.gz terracotta-${TERRACOTTA_VERSION}-linux-arm64
-          #   tar -czvf bundle/terracotta-${TERRACOTTA_VERSION}-linux-riscv64-pkg.tar.gz terracotta-${TERRACOTTA_VERSION}-linux-riscv64
-          #   tar -czvf bundle/terracotta-${TERRACOTTA_VERSION}-linux-loongarch64-pkg.tar.gz terracotta-${TERRACOTTA_VERSION}-linux-loongarch64
-          #   tar -czvf bundle/terracotta-${TERRACOTTA_VERSION}-freebsd-x86_64-pkg.tar.gz terracotta-${TERRACOTTA_VERSION}-freebsd-x86_64
+            tar -czvf bundle/terracotta-${TERRACOTTA_VERSION}-macos-x86_64-pkg.tar.gz terracotta-${TERRACOTTA_VERSION}-macos-x86_64 terracotta-${TERRACOTTA_VERSION}-macos-x86_64.pkg
+            tar -czvf bundle/terracotta-${TERRACOTTA_VERSION}-macos-arm64-pkg.tar.gz terracotta-${TERRACOTTA_VERSION}-macos-arm64 terracotta-${TERRACOTTA_VERSION}-macos-arm64.pkg
           
-          #   tar -czvf bundle/terracotta-${TERRACOTTA_VERSION}-macos-x86_64-pkg.tar.gz terracotta-${TERRACOTTA_VERSION}-macos-x86_64 terracotta-${TERRACOTTA_VERSION}-macos-x86_64.pkg
-          #   tar -czvf bundle/terracotta-${TERRACOTTA_VERSION}-macos-arm64-pkg.tar.gz terracotta-${TERRACOTTA_VERSION}-macos-arm64 terracotta-${TERRACOTTA_VERSION}-macos-arm64.pkg
+            cp terracotta-${TERRACOTTA_VERSION}-android-armv7.so bundle/terracotta-${TERRACOTTA_VERSION}-android-armv7.so
+            cp terracotta-${TERRACOTTA_VERSION}-android-arm64v8a.so bundle/terracotta-${TERRACOTTA_VERSION}-android-arm64v8a.so
+            cp terracotta-${TERRACOTTA_VERSION}-android-x86.so bundle/terracotta-${TERRACOTTA_VERSION}-android-x86.so
+            cp terracotta-${TERRACOTTA_VERSION}-android-x86_64.so bundle/terracotta-${TERRACOTTA_VERSION}-android-x86_64.so
           
-          #   cp terracotta-${TERRACOTTA_VERSION}-android-armv7.so bundle/terracotta-${TERRACOTTA_VERSION}-android-armv7.so
-          #   cp terracotta-${TERRACOTTA_VERSION}-android-arm64v8a.so bundle/terracotta-${TERRACOTTA_VERSION}-android-arm64v8a.so
-          #   cp terracotta-${TERRACOTTA_VERSION}-android-x86.so bundle/terracotta-${TERRACOTTA_VERSION}-android-x86.so
-          #   cp terracotta-${TERRACOTTA_VERSION}-android-x86_64.so bundle/terracotta-${TERRACOTTA_VERSION}-android-x86_64.so
-          
-          #   gh release create v"${{ github.event.inputs.version }}" -R "${{ github.repository }}" --draft --generate-notes bundle/terracotta-${TERRACOTTA_VERSION}-*
-          # fi
+            gh release create v"${{ github.event.inputs.version }}" -R "${{ github.repository }}" --draft --generate-notes bundle/terracotta-${TERRACOTTA_VERSION}-*
+          fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.ARTIFACT }}
+          path: ${{ env.ARTIFACT }}
+          retention-days: 90
+          archive: false
